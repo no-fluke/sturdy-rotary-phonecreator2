@@ -3,488 +3,124 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Preview & Edit Quiz</title>
-    <!-- Cropper.js -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
-    <!-- SortableJS -->
-    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+    <title>Quiz Builder - Upload</title>
     <style>
-        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f7fa; }
-        .question-card { border: 1px solid #ccc; padding: 15px; margin-bottom: 20px; border-radius: 8px; background: white; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-        .question-header { display: flex; justify-content: space-between; margin-bottom: 10px; }
-        .question-header h3 { margin: 0; color: #2ec4b6; }
-        .options-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 10px; }
-        .option-item { border: 1px dashed #aaa; padding: 8px; border-radius: 4px; background: #fafafa; }
-        .image-preview { max-width: 150px; max-height: 150px; margin-top: 5px; position: relative; display: inline-block; }
-        .image-preview img { max-width: 100%; max-height: 100%; border-radius: 4px; display: block; }
-        .btn-upload-image { margin-top: 5px; background: #3498db; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; }
-        .btn-remove-image { 
-            position: absolute; top: 0; right: 0; background: #c82d3f; color: white; 
-            border: none; border-radius: 50%; width: 20px; height: 20px; 
-            font-size: 12px; line-height: 1; cursor: pointer; padding: 0;
-            display: flex; align-items: center; justify-content: center;
-        }
-        .btn-remove-image:hover { background: #a02030; }
-        .crop-container { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; justify-content: center; align-items: center; }
-        .crop-box { background: white; padding: 20px; border-radius: 8px; max-width: 90%; max-height: 90%; overflow: auto; }
-        .crop-image { max-width: 100%; max-height: 70vh; }
-        #generateBtn { padding: 12px 24px; background: #27ae60; color: white; border: none; font-size: 18px; border-radius: 8px; cursor: pointer; margin-top: 20px; }
-        #addQuestionBtn { padding: 10px 20px; background: #2ec4b6; color: white; border: none; font-size: 16px; border-radius: 8px; cursor: pointer; margin: 10px 0; }
-        #quizName, #time, #marks, #negative, #creator { margin-bottom: 15px; padding: 8px; width: 200px; border: 1px solid #ccc; border-radius: 4px; }
-        .duplicateBtn, .deleteBtn { margin-left: 5px; padding: 4px 8px; border: none; border-radius: 4px; cursor: pointer; }
-        .duplicateBtn { background: #f39c12; color: white; }
-        .deleteBtn { background: #c82d3f; color: white; }
-        label { font-weight: bold; }
-        .section-select { margin-bottom: 10px; }
-        /* Mark fields */
-        .mark-fields { margin: 10px 0; display: flex; gap: 20px; align-items: center; }
-        .mark-fields label { font-weight: normal; }
-        .mark-fields input { width: 80px; padding: 6px; border: 1px solid #ccc; border-radius: 4px; }
-        .option-item textarea { width: 100%; box-sizing: border-box; resize: vertical; }
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 20px auto; padding: 20px; background: #f5f7fa; }
+        .container { border: 2px dashed #2ec4b6; padding: 30px; text-align: center; background: white; border-radius: 10px; }
+        #fileInput { margin: 20px 0; }
+        #uploadBtn { padding: 10px 20px; background: #2ec4b6; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 16px; }
+        #progress { display: none; margin-top: 20px; color: #2ec4b6; }
+        h1 { color: #2ec4b6; }
+        .quiz-type { margin: 20px 0; text-align: left; }
+        .quiz-type label { margin-right: 20px; }
+        .file-group { margin: 10px 0; padding: 10px; border: 1px solid #ddd; border-radius: 5px; background: #f9f9f9; }
+        .file-group input[type="text"] { width: 200px; padding: 5px; margin-right: 10px; }
+        .remove-btn { background: #c82d3f; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; }
+        #addSectionBtn { margin: 10px 0; background: #3498db; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; }
     </style>
 </head>
 <body>
-    <h1>✏️ Edit Quiz (<span id="quizTypeLabel"></span>)</h1>
-
-    <div style="margin-bottom: 20px; background: white; padding: 15px; border-radius: 8px;">
-        <label>Quiz Name: <input type="text" id="quizName" placeholder="My Quiz" value="My Quiz"></label>
-        <label>Time (minutes): <input type="number" id="time" value="25" min="1"></label>
-        <label>Marks per question: <input type="number" id="marks" value="3" step="0.5" min="0"></label>
-        <label>Negative marking: <input type="number" id="negative" value="1" step="0.25" min="0"></label>
-        <label>Creator: <input type="text" id="creator" placeholder="Your name" value="Anonymous"></label>
-    </div>
-
-    <button id="addQuestionBtn">➕ Add New Question</button>
-
-    <div id="questionsContainer"></div>
-
-    <button id="generateBtn">Generate Quiz HTML</button>
-
-    <!-- Crop Modal -->
-    <div id="cropModal" class="crop-container">
-        <div class="crop-box">
-            <img id="cropImage" class="crop-image">
-            <div style="margin-top: 10px; text-align: right;">
-                <button id="cropCancel">Cancel</button>
-                <button id="cropSave">Crop & Save</button>
-            </div>
+    <h1>📤 Upload TXT / HTML File(s)</h1>
+    <div class="container">
+        <div class="quiz-type">
+            <label><input type="radio" name="quiz_type" value="topic" checked onchange="toggleFullMock()"> Topic Wise (Single File)</label>
+            <label><input type="radio" name="quiz_type" value="full" onchange="toggleFullMock()"> Full Mock (Multiple Sections)</label>
         </div>
+
+        <div id="topic-upload" style="display: block;">
+            <!-- Accept both .txt and .html/.htm -->
+            <input type="file" id="topicFile" accept=".txt,.html,.htm">
+        </div>
+
+        <div id="full-upload" style="display: none;">
+            <div id="fileGroups"></div>
+            <button type="button" id="addSectionBtn">➕ Add Section</button>
+        </div>
+
+        <button id="uploadBtn">Upload & Parse</button>
+        <div id="progress">Processing...</div>
     </div>
 
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // Data from Flask – using tojson filter to embed safely
-            const questions = {{ questions|tojson }};
-            const initialSections = {{ sections|tojson }};
-            const quizType = "{{ quiz_type }}";
+        let sectionCount = 0;
 
-            console.log('Questions loaded:', questions);
-            console.log('Initial sections:', initialSections);
-            console.log('Quiz type:', quizType);
-
-            // Safety check – ensure questions is an array
-            if (!Array.isArray(questions)) {
-                console.error('questions is not an array! Received:', questions);
-                alert('Failed to load questions. Please check the console.');
-                return;
+        function toggleFullMock() {
+            const type = document.querySelector('input[name="quiz_type"]:checked').value;
+            document.getElementById('topic-upload').style.display = type === 'topic' ? 'block' : 'none';
+            document.getElementById('full-upload').style.display = type === 'full' ? 'block' : 'none';
+            if (type === 'full' && sectionCount === 0) {
+                addFileGroup();
             }
+        }
 
-            document.getElementById('quizTypeLabel').textContent = 
-                quizType === 'full' ? 'Full Mock' : 'Topic Wise';
+        function addFileGroup() {
+            const container = document.getElementById('fileGroups');
+            const group = document.createElement('div');
+            group.className = 'file-group';
+            group.id = `group-${sectionCount}`;
+            group.innerHTML = `
+                <input type="text" placeholder="Section Name (e.g., English)" id="section-${sectionCount}" required>
+                <!-- Accept both .txt and .html/.htm -->
+                <input type="file" accept=".txt,.html,.htm" id="file-${sectionCount}" required>
+                <button type="button" class="remove-btn" onclick="removeFileGroup(${sectionCount})">Remove</button>
+            `;
+            container.appendChild(group);
+            sectionCount++;
+        }
 
-            // For full mock, we need the list of all sections (may grow as user adds new sections)
-            let sections = quizType === 'full' ? [...initialSections] : [];
+        function removeFileGroup(id) {
+            const group = document.getElementById(`group-${id}`);
+            if (group) group.remove();
+        }
 
-            let currentCrop = { target: null, file: null, field: null, index: null };
+        document.getElementById('addSectionBtn').addEventListener('click', addFileGroup);
 
-            // Function to create a blank question (with default marks from global inputs)
-            function createBlankQuestion() {
-                let q = {
-                    question: "",
-                    option_1: "", option_2: "", option_3: "", option_4: "", option_5: "",
-                    answer: "",
-                    solution_text: "",
-                    question_image: "",
-                    option_image_1: "", option_image_2: "", option_image_3: "", option_image_4: "", option_image_5: "",
-                    solution_image: "",
-                    correct_score: document.getElementById('marks').value || "3",
-                    negative_score: document.getElementById('negative').value || "1"
-                };
-                if (quizType === 'full') {
-                    q.section = sections.length > 0 ? sections[0] : "General";
-                }
-                return q;
-            }
+        document.getElementById('uploadBtn').addEventListener('click', async () => {
+            const quizType = document.querySelector('input[name="quiz_type"]:checked').value;
+            const formData = new FormData();
+            formData.append('quiz_type', quizType);
 
-            // Helper to remove an image
-            function removeImage(index, field) {
-                // Clear the data
-                questions[index][field] = '';
-                // Update the preview div
-                let previewId;
-                if (field === 'question_image') {
-                    previewId = `q-img-${index}`;
-                } else if (field.startsWith('option_image_')) {
-                    const optNum = field.split('_')[2];
-                    previewId = `opt-img-${index}-${optNum}`;
-                } else if (field === 'solution_image') {
-                    previewId = `sol-img-${index}`;
-                }
-                const previewDiv = document.getElementById(previewId);
-                if (previewDiv) {
-                    previewDiv.innerHTML = ''; // remove img and button
-                }
-            }
-
-            // Render all questions
-            function renderQuestions() {
-                const container = document.getElementById('questionsContainer');
-                if (!container) {
-                    console.error('questionsContainer not found');
-                    return;
-                }
-                container.innerHTML = '';
-
-                // For full mock, update sections list from questions
-                if (quizType === 'full') {
-                    const distinct = new Set();
-                    questions.forEach(q => { if (q.section) distinct.add(q.section); });
-                    sections = Array.from(distinct);
-                    if (sections.length === 0) sections = ["General"];
-                }
-
-                questions.forEach((q, idx) => {
-                    const card = document.createElement('div');
-                    card.className = 'question-card';
-                    card.dataset.index = idx;
-
-                    // Section dropdown HTML (only for full mock)
-                    let sectionHtml = '';
-                    if (quizType === 'full') {
-                        let sectionOptions = '';
-                        sections.forEach(s => {
-                            sectionOptions += `<option value="${s}" ${q.section === s ? 'selected' : ''}>${s}</option>`;
-                        });
-                        sectionOptions += `<option value="__new__">+ Add New Section...</option>`;
-                        sectionHtml = `
-                            <div class="section-select">
-                                <label>Section:</label>
-                                <select class="q-section" data-index="${idx}">
-                                    ${sectionOptions}
-                                </select>
-                            </div>
-                        `;
-                    }
-
-                    // Build preview with optional remove button for question image
-                    const questionImageHtml = q.question_image ? 
-                        `<img src="${q.question_image}"><button class="btn-remove-image" data-index="${idx}" data-field="question_image">✕</button>` : '';
-
-                    // Option images preview + remove
-                    const optionPreviews = [1,2,3,4,5].map(i => {
-                        const imgField = `option_image_${i}`;
-                        const imgHtml = q[imgField] ? 
-                            `<img src="${q[imgField]}"><button class="btn-remove-image" data-index="${idx}" data-field="${imgField}">✕</button>` : '';
-                        return `<div class="image-preview" id="opt-img-${idx}-${i}">${imgHtml}</div>`;
-                    });
-
-                    // Solution image preview + remove
-                    const solutionImageHtml = q.solution_image ? 
-                        `<img src="${q.solution_image}"><button class="btn-remove-image" data-index="${idx}" data-field="solution_image">✕</button>` : '';
-
-                    card.innerHTML = `
-                        <div class="question-header">
-                            <h3>Question ${idx+1}</h3>
-                            <div>
-                                <button class="duplicateBtn" data-index="${idx}">Duplicate</button>
-                                <button class="deleteBtn" data-index="${idx}">Delete</button>
-                            </div>
-                        </div>
-                        ${sectionHtml}
-                        <div>
-                            <label>Question Text:</label>
-                            <textarea class="q-text" data-index="${idx}" rows="3" style="width:100%">${q.question || ''}</textarea>
-                            <div class="image-preview" id="q-img-${idx}">${questionImageHtml}</div>
-                            <button class="btn-upload-image" data-index="${idx}" data-field="question_image">Upload Image</button>
-                        </div>
-                        <div class="options-grid">
-                            ${[1,2,3,4,5].map(i => `
-                                <div class="option-item">
-                                    <label>Option ${i}:</label>
-                                    <textarea class="q-opt" data-index="${idx}" data-opt="${i}" rows="2" style="width:100%">${q[`option_${i}`] || ''}</textarea>
-                                    ${optionPreviews[i-1]}
-                                    <button class="btn-upload-image" data-index="${idx}" data-field="option_image_${i}">Upload</button>
-                                </div>
-                            `).join('')}
-                        </div>
-                        <div>
-                            <label>Correct Answer (option number 1-5):</label>
-                            <input type="number" class="q-answer" data-index="${idx}" min="1" max="5" value="${q.answer || ''}">
-                        </div>
-
-                        <!-- 🔥 PER‑QUESTION MARKS FIELDS -->
-                        <div class="mark-fields">
-                            <label>Correct Mark: 
-                                <input type="number" class="q-correct" data-index="${idx}" step="0.1" min="0" value="${q.correct_score !== undefined ? q.correct_score : '3'}">
-                            </label>
-                            <label>Negative Mark: 
-                                <input type="number" class="q-negative" data-index="${idx}" step="0.1" min="0" value="${q.negative_score !== undefined ? q.negative_score : '1'}">
-                            </label>
-                        </div>
-
-                        <div>
-                            <label>Explanation:</label>
-                            <textarea class="q-solution" data-index="${idx}" rows="2" style="width:100%">${q.solution_text || ''}</textarea>
-                            <div class="image-preview" id="sol-img-${idx}">${solutionImageHtml}</div>
-                            <button class="btn-upload-image" data-index="${idx}" data-field="solution_image">Upload</button>
-                        </div>
-                    `;
-                    container.appendChild(card);
-                });
-
-                // Attach event listeners
-                attachEventListeners();
-            }
-
-            function attachEventListeners() {
-                // Upload buttons
-                document.querySelectorAll('.btn-upload-image').forEach(btn => {
-                    btn.addEventListener('click', (e) => {
-                        const index = e.target.dataset.index;
-                        const field = e.target.dataset.field;
-                        const fileInput = document.createElement('input');
-                        fileInput.type = 'file';
-                        fileInput.accept = 'image/*';
-                        fileInput.onchange = (e2) => {
-                            const file = e2.target.files[0];
-                            if (file) {
-                                openCropModal(file, index, field);
-                            }
-                        };
-                        fileInput.click();
-                    });
-                });
-
-                // Remove image buttons
-                document.querySelectorAll('.btn-remove-image').forEach(btn => {
-                    btn.addEventListener('click', (e) => {
-                        e.stopPropagation(); // avoid any parent triggers
-                        const index = e.target.dataset.index;
-                        const field = e.target.dataset.field;
-                        if (index !== undefined && field) {
-                            removeImage(index, field);
-                        }
-                    });
-                });
-
-                // Section change (full mock)
-                if (quizType === 'full') {
-                    document.querySelectorAll('.q-section').forEach(sel => {
-                        sel.addEventListener('change', (e) => {
-                            const idx = e.target.dataset.index;
-                            const newVal = e.target.value;
-                            if (newVal === '__new__') {
-                                const newSection = prompt("Enter new section name:");
-                                if (newSection && newSection.trim() !== '') {
-                                    const trimmed = newSection.trim();
-                                    if (!sections.includes(trimmed)) {
-                                        sections.push(trimmed);
-                                    }
-                                    questions[idx].section = trimmed;
-                                    renderQuestions(); // re-render to update dropdowns
-                                } else {
-                                    // revert to previous value
-                                    e.target.value = questions[idx].section;
-                                }
-                            } else {
-                                questions[idx].section = newVal;
-                            }
-                        });
-                    });
-                }
-
-                // Duplicate
-                document.querySelectorAll('.duplicateBtn').forEach(btn => {
-                    btn.addEventListener('click', (e) => {
-                        const idx = parseInt(e.target.dataset.index);
-                        const newQ = JSON.parse(JSON.stringify(questions[idx]));
-                        questions.splice(idx+1, 0, newQ);
-                        renderQuestions();
-                    });
-                });
-
-                // Delete
-                document.querySelectorAll('.deleteBtn').forEach(btn => {
-                    btn.addEventListener('click', (e) => {
-                        const idx = parseInt(e.target.dataset.index);
-                        questions.splice(idx, 1);
-                        renderQuestions();
-                    });
-                });
-
-                // Real-time updates for inputs
-                document.querySelectorAll('.q-text').forEach(inp => {
-                    inp.addEventListener('input', (e) => {
-                        const idx = e.target.dataset.index;
-                        questions[idx].question = e.target.value;
-                    });
-                });
-                document.querySelectorAll('.q-opt').forEach(inp => {
-                    inp.addEventListener('input', (e) => {
-                        const idx = e.target.dataset.index;
-                        const opt = e.target.dataset.opt;
-                        questions[idx][`option_${opt}`] = e.target.value;
-                    });
-                });
-                document.querySelectorAll('.q-answer').forEach(inp => {
-                    inp.addEventListener('input', (e) => {
-                        const idx = e.target.dataset.index;
-                        questions[idx].answer = e.target.value;
-                    });
-                });
-                // 🔥 NEW: Listeners for mark fields
-                document.querySelectorAll('.q-correct').forEach(inp => {
-                    inp.addEventListener('input', (e) => {
-                        const idx = e.target.dataset.index;
-                        questions[idx].correct_score = e.target.value;
-                    });
-                });
-                document.querySelectorAll('.q-negative').forEach(inp => {
-                    inp.addEventListener('input', (e) => {
-                        const idx = e.target.dataset.index;
-                        questions[idx].negative_score = e.target.value;
-                    });
-                });
-                document.querySelectorAll('.q-solution').forEach(inp => {
-                    inp.addEventListener('input', (e) => {
-                        const idx = e.target.dataset.index;
-                        questions[idx].solution_text = e.target.value;
-                    });
-                });
-            }
-
-            // Cropper functions
-            function openCropModal(file, qIndex, field) {
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    const img = document.getElementById('cropImage');
-                    img.src = e.target.result;
-                    currentCrop = { target: img, file, field, index: qIndex };
-                    const modal = document.getElementById('cropModal');
-                    modal.style.display = 'flex';
-                    if (window.cropper) window.cropper.destroy();
-                    window.cropper = new Cropper(img, {
-                        aspectRatio: NaN,
-                        viewMode: 1,
-                        autoCropArea: 1,
-                    });
-                };
-                reader.readAsDataURL(file);
-            }
-
-            document.getElementById('cropCancel').addEventListener('click', () => {
-                document.getElementById('cropModal').style.display = 'none';
-                if (window.cropper) window.cropper.destroy();
-            });
-
-            document.getElementById('cropSave').addEventListener('click', async () => {
-                if (!window.cropper) return;
-                const canvas = window.cropper.getCroppedCanvas({
-                    maxWidth: 900,
-                    maxHeight: 900,
-                    fillColor: '#fff',
-                    imageSmoothingQuality: 'high',
-                });
-                canvas.toBlob(async (blob) => {
-                    const formData = new FormData();
-                    formData.append('image', blob, 'cropped.jpg');
-                    const res = await fetch('/upload_image', { method: 'POST', body: formData });
-                    const data = await res.json();
-                    if (data.base64) {
-                        const idx = currentCrop.index;
-                        const field = currentCrop.field;
-                        questions[idx][field] = data.base64;
-                        // Update preview
-                        const previewId = field === 'question_image' ? `q-img-${idx}` :
-                                          field.startsWith('option_image_') ? `opt-img-${idx}-${field.split('_')[2]}` :
-                                          `sol-img-${idx}`;
-                        const previewDiv = document.getElementById(previewId);
-                        if (previewDiv) {
-                            // Replace content with new image + remove button (consistent with render)
-                            previewDiv.innerHTML = `<img src="${data.base64}"><button class="btn-remove-image" data-index="${idx}" data-field="${field}">✕</button>`;
-                            // Re-attach listener to this new remove button
-                            const newRemove = previewDiv.querySelector('.btn-remove-image');
-                            if (newRemove) {
-                                newRemove.addEventListener('click', (e) => {
-                                    e.stopPropagation();
-                                    removeImage(e.target.dataset.index, e.target.dataset.field);
-                                });
-                            }
-                        }
-                    }
-                    document.getElementById('cropModal').style.display = 'none';
-                    if (window.cropper) window.cropper.destroy();
-                }, 'image/jpeg', 0.6);
-            });
-
-            // Sortable for drag-drop
-            new Sortable(document.getElementById('questionsContainer'), {
-                animation: 150,
-                onEnd: (evt) => {
-                    const movedItem = questions.splice(evt.oldIndex, 1)[0];
-                    questions.splice(evt.newIndex, 0, movedItem);
-                    renderQuestions();
-                }
-            });
-
-            // Add New Question button
-            const addBtn = document.getElementById('addQuestionBtn');
-            if (addBtn) {
-                addBtn.addEventListener('click', () => {
-                    questions.push(createBlankQuestion());
-                    renderQuestions();
-                });
+            if (quizType === 'topic') {
+                const file = document.getElementById('topicFile').files[0];
+                if (!file) { alert('Select a file'); return; }
+                formData.append('file', file);
             } else {
-                console.error('addQuestionBtn not found');
+                const groups = document.querySelectorAll('.file-group');
+                if (groups.length === 0) { alert('Add at least one section'); return; }
+                let valid = true;
+                groups.forEach((group, idx) => {
+                    const sectionInput = group.querySelector('input[type="text"]');
+                    const fileInput = group.querySelector('input[type="file"]');
+                    if (!sectionInput.value.trim()) {
+                        alert(`Section name missing for group ${idx+1}`);
+                        valid = false;
+                        return;
+                    }
+                    if (!fileInput.files[0]) {
+                        alert(`File missing for group ${idx+1}`);
+                        valid = false;
+                        return;
+                    }
+                    formData.append(`section_${idx}`, sectionInput.value.trim());
+                    formData.append(`file_${idx}`, fileInput.files[0]);
+                });
+                if (!valid) return;
             }
 
-            // 🔥 FIX: Generate final quiz – apply global marks to all questions before sending
-            document.getElementById('generateBtn').addEventListener('click', async () => {
-                // Apply global marks to every question
-                const globalCorrect = document.getElementById('marks').value;
-                const globalNegative = document.getElementById('negative').value;
-                questions.forEach(q => {
-                    q.correct_score = globalCorrect;
-                    q.negative_score = globalNegative;
-                });
-
-                const quizData = {
-                    quiz_name: document.getElementById('quizName').value || 'Quiz',
-                    time: parseInt(document.getElementById('time').value) || 25,
-                    marks: parseFloat(globalCorrect) || 3,
-                    negative: parseFloat(globalNegative) || 1,
-                    creator: document.getElementById('creator').value || 'Anonymous',
-                    questions: questions,
-                    quiz_type: quizType
-                };
-
-                const res = await fetch('/generate', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(quizData)
-                });
-                const blob = await res.blob();
-                const url = window.URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `${quizData.quiz_name}.html`;
-                a.click();
-                window.URL.revokeObjectURL(url);
-            });
-
-            // Initial render
-            renderQuestions();
+            document.getElementById('progress').style.display = 'block';
+            try {
+                const res = await fetch('/upload', { method: 'POST', body: formData });
+                const data = await res.json();
+                if (data.error) {
+                    alert('Error: ' + data.error);
+                    document.getElementById('progress').style.display = 'none';
+                } else {
+                    window.location.href = `/preview/${data.quiz_id}`;
+                }
+            } catch (e) {
+                alert('Upload failed');
+                document.getElementById('progress').style.display = 'none';
+            }
         });
     </script>
 </body>
