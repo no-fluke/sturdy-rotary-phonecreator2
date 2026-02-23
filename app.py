@@ -127,6 +127,83 @@ def parse_txt_file(content):
     
     return questions
 
+
+# -------------------------------
+# HTML PARSER (for the sample quiz HTML files)
+# -------------------------------
+def parse_html_file(content):
+    """Parse HTML file containing embedded quiz data (like the samples)."""
+    # Try to find const questions = [...];
+    questions_match = re.search(r'const\s+questions\s*=\s*(\[.*?\]);', content, re.DOTALL)
+    if questions_match:
+        try:
+            qlist = json.loads(questions_match.group(1))
+            result = []
+            for q in qlist:
+                internal_q = {
+                    "question": q.get("question", ""),
+                    "option_1": q.get("option_1", ""),
+                    "option_2": q.get("option_2", ""),
+                    "option_3": q.get("option_3", ""),
+                    "option_4": q.get("option_4", ""),
+                    "option_5": q.get("option_5", ""),
+                    "answer": str(q.get("answer", "")),
+                    "solution_text": q.get("solution_text", ""),
+                    "question_image": q.get("question_image", ""),
+                    "option_image_1": q.get("option_image_1", ""),
+                    "option_image_2": q.get("option_image_2", ""),
+                    "option_image_3": q.get("option_image_3", ""),
+                    "option_image_4": q.get("option_image_4", ""),
+                    "option_image_5": q.get("option_image_5", ""),
+                    "solution_image": q.get("solution_image", ""),
+                    "correct_score": q.get("positive_marks", "2.00") or "2.00",
+                    "negative_score": q.get("negative_marks", "0.50") or "0.50",
+                    "section": ""
+                }
+                result.append(internal_q)
+            return result
+        except Exception as e:
+            print("JSON parse error (questions):", e)
+            # fall through to other pattern
+
+    # Try const quizData = {...};
+    quizdata_match = re.search(r'const\s+quizData\s*=\s*(\{.*?\});', content, re.DOTALL)
+    if quizdata_match:
+        try:
+            quizdata = json.loads(quizdata_match.group(1))
+            qlist = quizdata.get("questions", [])
+            result = []
+            for q in qlist:
+                options = q.get("options", [])
+                internal_q = {
+                    "question": q.get("text", ""),
+                    "option_1": options[0] if len(options) > 0 else "",
+                    "option_2": options[1] if len(options) > 1 else "",
+                    "option_3": options[2] if len(options) > 2 else "",
+                    "option_4": options[3] if len(options) > 3 else "",
+                    "option_5": options[4] if len(options) > 4 else "",
+                    "answer": str(q.get("correctIndex", 0) + 1),  # convert to 1-indexed string
+                    "solution_text": q.get("explanation", ""),
+                    "question_image": "",
+                    "option_image_1": "",
+                    "option_image_2": "",
+                    "option_image_3": "",
+                    "option_image_4": "",
+                    "option_image_5": "",
+                    "solution_image": "",
+                    "correct_score": "1",
+                    "negative_score": "0.25",
+                    "section": ""
+                }
+                result.append(internal_q)
+            return result
+        except Exception as e:
+            print("JSON parse error (quizData):", e)
+
+    # If neither pattern found, return empty list
+    return []
+
+
 # -------------------------------
 # IMAGE PROCESSOR
 # -------------------------------
@@ -154,6 +231,7 @@ def process_image(file_storage, max_size=(700, 700), quality=60):
         print("Image error:", e)
         return None
 
+
 # -------------------------------
 # ROUTES
 # -------------------------------
@@ -169,11 +247,18 @@ def upload():
     try:
         if quiz_type == 'topic':
             file = request.files.get('file')
-            if not file or not file.filename.endswith('.txt'):
-                return jsonify({'error': 'Invalid file'}), 400
+            if not file:
+                return jsonify({'error': 'No file'}), 400
 
+            filename = file.filename.lower()
             content = file.read().decode('utf-8', errors='ignore')
-            questions = parse_txt_file(content)
+
+            if filename.endswith('.txt'):
+                questions = parse_txt_file(content)
+            elif filename.endswith(('.html', '.htm')):
+                questions = parse_html_file(content)
+            else:
+                return jsonify({'error': 'Unsupported file type. Please upload .txt or .html'}), 400
 
             if not questions:
                 return jsonify({'error': 'No questions parsed'}), 400
@@ -183,25 +268,29 @@ def upload():
                 "questions": questions,
                 "quiz_type": quiz_type
             }
-
             return jsonify({'quiz_id': quiz_id})
 
         # FULL MOCK
         else:
             files = []
             sections = []
-
             for key in request.files:
                 if key.startswith("file_"):
                     idx = key.split("_")[1]
                     file = request.files[key]
                     section_name = request.form.get(f'section_{idx}', '').strip()
-
                     if not file or not section_name:
                         return jsonify({'error': 'Section missing'}), 400
 
+                    filename = file.filename.lower()
                     content = file.read().decode('utf-8', errors='ignore')
-                    qs = parse_txt_file(content)
+
+                    if filename.endswith('.txt'):
+                        qs = parse_txt_file(content)
+                    elif filename.endswith(('.html', '.htm')):
+                        qs = parse_html_file(content)
+                    else:
+                        return jsonify({'error': f'Unsupported file type for section {section_name}. Use .txt or .html'}), 400
 
                     for q in qs:
                         q["section"] = section_name
@@ -209,13 +298,15 @@ def upload():
                     files.extend(qs)
                     sections.append(section_name)
 
+            if not files:
+                return jsonify({'error': 'No questions parsed'}), 400
+
             quiz_id = str(uuid.uuid4())
             app.config['TEMP_QUIZ_DATA'][quiz_id] = {
                 "questions": files,
                 "quiz_type": quiz_type,
                 "sections": sections
             }
-
             return jsonify({'quiz_id': quiz_id})
 
     except Exception as e:
