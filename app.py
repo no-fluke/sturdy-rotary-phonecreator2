@@ -3,6 +3,7 @@ import re
 import json
 import base64
 import uuid
+import html          # for unescaping HTML entities
 from io import BytesIO
 from PIL import Image
 from flask import Flask, render_template, request, jsonify, Response
@@ -205,6 +206,57 @@ def parse_html_file(content):
 
 
 # -------------------------------
+# TXT FORMATTER (for download in CHSL polity mock style)
+# -------------------------------
+def strip_html(text):
+    """Remove HTML tags, unescape entities, and collapse whitespace."""
+    if not text:
+        return ""
+    text = re.sub(r'<[^>]+>', ' ', text)
+    text = html.unescape(text)
+    text = re.sub(r'\s+', ' ', text).strip()
+    return text
+
+def questions_to_txt(questions):
+    """Convert the internal question list to the CHSL polity mock TXT format."""
+    lines = []
+    for idx, q in enumerate(questions, start=1):
+        # Question number and text
+        q_text = strip_html(q.get('question', ''))
+        lines.append(f"{idx}. {q_text}")
+
+        # Options a) to e)
+        for opt_num in range(1, 6):
+            opt_key = f'option_{opt_num}'
+            if opt_key in q and q[opt_key]:
+                opt_text = strip_html(q[opt_key])
+                opt_letter = chr(96 + opt_num)  # a=1, b=2, ...
+                lines.append(f"{opt_letter}) {opt_text}")
+
+        # Correct answer
+        ans = q.get('answer', '')
+        if ans:
+            try:
+                ans_int = int(ans)
+                ans_letter = chr(96 + ans_int)
+            except ValueError:
+                ans_letter = ans  # fallback, e.g. if answer already a letter
+            lines.append(f"Correct option:-{ans_letter}")
+
+        # Explanation
+        expl = strip_html(q.get('solution_text', ''))
+        if expl:
+            lines.append(f"ex: {expl}")
+        else:
+            lines.append("ex: No explanation provided.")
+
+        # Blank line between questions
+        lines.append("")
+
+    return "\n".join(lines)
+
+
+# -------------------------------
 # IMAGE PROCESSOR
 # -------------------------------
 def process_image(file_storage, max_size=(700, 700), quality=60):
@@ -326,6 +378,21 @@ def preview(quiz_id):
         quiz_type=data["quiz_type"],
         sections=data.get("sections", [])
     )
+
+
+@app.route('/download_txt/<quiz_id>')
+def download_txt(quiz_id):
+    """Download the parsed questions as a plain text file in CHSL polity mock format."""
+    data = app.config['TEMP_QUIZ_DATA'].get(quiz_id)
+    if not data:
+        return "Quiz not found", 404
+
+    questions = data["questions"]
+    txt_content = questions_to_txt(questions)
+
+    response = Response(txt_content, mimetype='text/plain')
+    response.headers.set('Content-Disposition', 'attachment', filename=f"quiz_{quiz_id}.txt")
+    return response
 
 
 @app.route('/upload_image', methods=['POST'])
