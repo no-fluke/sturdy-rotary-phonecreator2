@@ -20,7 +20,7 @@
     </style>
 </head>
 <body>
-    <h1>📤 Upload TXT File(s)</h1>
+    <h1>📤 Upload TXT / HTML File(s)</h1>
     <div class="container">
         <div class="quiz-type">
             <label><input type="radio" name="quiz_type" value="topic" checked onchange="toggleFullMock()"> Topic Wise (Single File)</label>
@@ -28,7 +28,8 @@
         </div>
 
         <div id="topic-upload" style="display: block;">
-            <input type="file" id="topicFile" accept=".txt">
+            <!-- Accept both .txt and .html/.htm -->
+            <input type="file" id="topicFile" accept=".txt,.html,.htm">
         </div>
 
         <div id="full-upload" style="display: none;">
@@ -59,7 +60,8 @@
             group.id = `group-${sectionCount}`;
             group.innerHTML = `
                 <input type="text" placeholder="Section Name (e.g., English)" id="section-${sectionCount}" required>
-                <input type="file" accept=".txt" id="file-${sectionCount}" required>
+                <!-- Accept both .txt and .html/.htm -->
+                <input type="file" accept=".txt,.html,.htm" id="file-${sectionCount}" required>
                 <button type="button" class="remove-btn" onclick="removeFileGroup(${sectionCount})">Remove</button>
             `;
             container.appendChild(group);
